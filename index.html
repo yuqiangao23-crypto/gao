@@ -1,76 +1,138 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>API数据展示</title>
-    <!-- 引入jQuery，这样我们可以用它来简化操作 -->
+    <title>新加坡PSI空气质量数据</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        .region {
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-    <h1>用户数据表格</h1>
+    <h1>新加坡PSI空气质量指数</h1>
+    <p>最后更新时间: <span id="updateTime">加载中...</span></p>
     
-    <!-- 这里将显示我们从API获取的数据 -->
-    <table id="dataTable" border="1">
+    <table id="psiTable">
         <thead>
             <tr>
-                <th>ID</th>
-                <th>姓名</th>
-                <th>用户名</th>
-                <th>邮箱</th>
+                <th>区域</th>
+                <th>PSI 指数</th>
+                <th>空气质量</th>
             </tr>
         </thead>
         <tbody>
-            <!-- 数据将动态添加到这里 -->
+            <tr>
+                <td colspan="3" class="loading">正在加载数据...</td>
+            </tr>
         </tbody>
     </table>
 
-    <!-- 我们的JavaScript代码 -->
     <script>
-        // // 这是一个免费的测试API，我们可以用它来练习
-const apiUrl = 'https://jsonplaceholder.typicode.com/users';
+        // 新加坡政府PSI API
+        const apiUrl = 'https://api.data.gov.sg/v1/environment/psi';
 
-// 使用jQuery的ajax方法获取数据
-$.ajax({
-    url: apiUrl,
-    method: 'GET',
-    success: function(data) {
-        // 成功获取数据后执行这里
-        console.log('获取到的数据:', data); // 在浏览器控制台查看数据
-        
-        // 调用函数来处理和显示数据
-        displayData(data);
-    },
-    error: function(error) {
-        // 如果出错执行这里
-        console.log('出错了:', error);
-        alert('获取数据失败，请查看控制台信息');
-    }
-});
+        // 获取数据
+        $.ajax({
+            url: apiUrl,
+            method: 'GET',
+            success: function(data) {
+                console.log('获取到的完整数据:', data);
+                
+                // 调用函数处理数据
+                displayPSIData(data);
+            },
+            error: function(error) {
+                console.log('获取数据失败:', error);
+                $('#psiTable tbody').html('<tr><td colspan="3" style="color: red;">获取数据失败，请稍后重试</td></tr>');
+            }
+        });
 
-// 处理并显示数据的函数
-function displayData(users) {
-    const tableBody = $('#dataTable tbody');
-    
-    // 清空表格中可能存在的旧数据
-    tableBody.empty();
-    
-    // 遍历每个用户数据
-    users.forEach(function(user) {
-        // 创建一行表格数据
-        const row = `
-            <tr>
-                <td>${user.id}</td>
-                <td>${user.name}</td>
-                <td>${user.username}</td>
-                <td>${user.email}</td>
-            </tr>
-        `;
-        
-        // 将新行添加到表格中
-        tableBody.append(row);
-    });
-    
-    console.log('数据展示完成！共显示 ' + users.length + ' 条记录');
-}
+        // 处理并显示PSI数据
+        function displayPSIData(data) {
+            // 更新最后更新时间
+            if (data.items && data.items[0]) {
+                const updateTime = new Date(data.items[0].update_timestamp).toLocaleString();
+                $('#updateTime').text(updateTime);
+            }
+            
+            // 获取PSI读数
+            if (data.items && data.items[0] && data.items[0].readings) {
+                const readings = data.items[0].readings.psi_twenty_four_hourly;
+                const tableBody = $('#psiTable tbody');
+                
+                // 清空表格
+                tableBody.empty();
+                
+                // 遍历每个区域的PSI数据
+                for (const region in readings) {
+                    if (readings.hasOwnProperty(region)) {
+                        const psiValue = readings[region];
+                        const quality = getAirQuality(psiValue);
+                        
+                        // 创建表格行
+                        const row = `
+                            <tr>
+                                <td class="region">${getRegionChineseName(region)}</td>
+                                <td>${psiValue}</td>
+                                <td>${quality}</td>
+                            </tr>
+                        `;
+                        
+                        tableBody.append(row);
+                    }
+                }
+                
+                console.log('PSI数据展示完成！');
+            } else {
+                $('#psiTable tbody').html('<tr><td colspan="3">暂无数据</td></tr>');
+            }
+        }
+
+        // 根据PSI值判断空气质量
+        function getAirQuality(psi) {
+            if (psi <= 50) return '良好';
+            if (psi <= 100) return '中等';
+            if (psi <= 200) return '不健康';
+            if (psi <= 300) return '非常不健康';
+            return '危险';
+        }
+
+        // 区域名称中英文映射
+        function getRegionChineseName(region) {
+            const regionMap = {
+                'national': '全国',
+                'central': '中部',
+                'west': '西部',
+                'east': '东部',
+                'north': '北部',
+                'south': '南部'
+            };
+            return regionMap[region] || region;
+        }
     </script>
 </body>
 </html>
