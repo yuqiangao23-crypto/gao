@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蘑菇图案</title>
+    <style>
+        body {
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .svg-container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="svg-container">
+        <svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+            <!-- 纯白色背景 -->
+            <rect width="100%" height="100%" fill="#ffffff"/>
+            
+            <!-- 地面 -->
+            <path d="M0,320 Q100,310 200,315 Q300,320 400,310 L400,400 L0,400 Z" fill="#8BC34A" opacity="0.8"/>
+            
+            <!-- 蘑菇柄 - 圆润的圆柱形 -->
+            <path d="M180,250 C190,230 210,230 220,250 L220,320 C210,340 190,340 180,320 Z" 
+                  fill="#F5E6CA"/>
+            
+            <!-- 蘑菇伞 - 半圆形，底面平整 -->
+            <path d="M150,200 Q200,150 250,200 L250,250 Q200,300 150,250 Z" 
+                  fill="#E53935"/>
+            
+            <!-- 蘑菇伞底部纹理 -->
+            <path d="M160,250 Q180,245 200,247 Q220,250 240,247" 
+                  stroke="#F5E6CA" stroke-width="8" fill="none" stroke-linecap="round"/>
+            
+            <!-- 白色斑点 - 随机分布，增加非对称性 -->
+            <circle cx="170" cy="220" r="12" fill="#ffffff"/>
+            <circle cx="210" cy="210" r="8" fill="#ffffff"/>
+            <circle cx="230" cy="240" r="10" fill="#ffffff"/>
+            <circle cx="190" cy="260" r="6" fill="#ffffff"/>
+            <circle cx="160" cy="250" r="9" fill="#ffffff"/>
+            <circle cx="240" cy="270" r="7" fill="#ffffff"/>
+            
+            <!-- 绿草装饰 - 非对称分布 -->
+            <path d="M50,320 L60,280 L55,320 Z" fill="#4CAF50"/>
+            <path d="M80,320 L85,270 L90,320 Z" fill="#4CAF50"/>
+            <path d="M120,320 L125,290 L130,320 Z" fill="#4CAF50"/>
+            <path d="M280,320 L290,275 L295,320 Z" fill="#4CAF50"/>
+            <path d="M320,320 L330,285 L335,320 Z" fill="#4CAF50"/>
+            <path d="M360,320 L365,295 L370,320 Z" fill="#4CAF50"/>
+            
+            <!-- 小蘑菇装饰 -->
+            <path d="M70,300 C75,290 85,290 90,300 L90,320 C85,330 75,330 70,320 Z" 
+                  fill="#FF8A65"/>
+            <path d="M70,300 Q80,290 90,300" fill="#FF8A65"/>
+            <circle cx="75" cy="295" r="3" fill="#ffffff"/>
+            <circle cx="85" cy="290" r="2" fill="#ffffff"/>
+            
+            <path d="M330,300 C335,290 345,290 350,300 L350,320 C345,330 335,330 330,320 Z" 
+                  fill="#FFB74D"/>
+            <path d="M330,300 Q340,295 350,300" fill="#FFB74D"/>
+            <circle cx="335" cy="295" r="3" fill="#ffffff"/>
+            <circle cx="345" cy="292" r="2" fill="#ffffff"/>
+        </svg>
+    </div>
+</body>
+</html>
