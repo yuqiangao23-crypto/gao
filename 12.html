@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Singapore Hospital Distribution and Data Visualization</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- 引入D3.js -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        #map-container {
+            height: 500px;
+            margin-bottom: 40px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        
+        #charts-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+            margin-top: 40px;
+        }
+        
+        .chart-placeholder {
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background-color: white;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        /* 修复图表容器尺寸问题 */
+        .chart-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        /* 三高疾病图表样式 */
+        .disease-chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 100%;
+            height: 500px;
+            position: relative;
+        }
+        
+        .disease-chart-title {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .axis-label {
+            font-size: 14px;
+            fill: #555;
+        }
+        
+        .disease-line {
+            fill: none;
+            stroke-width: 3px;
+            transition: all 0.3s ease;
+        }
+        
+        .disease-area {
+            opacity: 0.3;
+            transition: all 0.3s ease;
+        }
+        
+        .disease-tooltip {
+            position: absolute;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            pointer-events: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .disease-legend {
+            font-size: 12px;
+        }
+        
+        .disease-legend-item {
+            cursor: pointer;
+        }
+        
+        .disease-highlight {
+            stroke-width: 5px;
+            filter: drop-shadow(0 0 5px rgba(0,0,0,0.3));
+        }
+        
+        .disease-fade {
+            opacity: 0.3;
+        }
+        
+        /* 韦恩图样式 */
+        .venn-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 800px;
+            height: 600px;
+            position: relative;
+        }
+        
+        .venn-title {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #2c3e50;
+            font-size: 24px;
+        }
+        
+        .venn-subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #7f8c8d;
+            font-size: 16px;
+        }
+        
+        .venn-tooltip {
+            position: absolute;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.97);
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            pointer-events: none;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+            font-size: 13px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            max-width: 250px;
+            z-index: 10;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 25px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 0 15px;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+        
+        .legend-item:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .legend-color {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            margin-right: 8px;
+            transition: all 0.3s;
+        }
+        
+        .module-name {
+            font-size: 14px;
+            font-weight: bold;
+            text-anchor: middle;
+            pointer-events: none;
+            fill: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .description-box {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+            min-height: 60px;
+            transition: all 0.3s;
+        }
+        
+        .description-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+        
+        .description-content {
+            color: #34495e;
+            line-height: 1.5;
+        }
+        
+        .intersection-marker {
+            fill: #f1c40f;
+            stroke: #f39c12;
+            stroke-width: 1.5;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .intersection-marker:hover {
+            opacity: 0.8;
+        }
+        
+        /* 骨痛热症图表样式 */
+        .dengue-chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 100%;
+            height: 500px;
+            position: relative;
+        }
+        
+        .chart-title {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .dengue-tooltip {
+            position: absolute;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            pointer-events: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .bar {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .bar:hover {
+            opacity: 0.8;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        
+        .control-btn {
+            margin: 0 10px;
+            padding: 8px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .control-btn:hover {
+            background-color: #2980b9;
+        }
+        
+        /* 疾病网络图样式 */
+        .network-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 100%;
+            height: 600px;
+            position: relative;
+        }
+        
+        .network-title {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .node {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .node-label {
+            font-size: 12px;
+            text-anchor: middle;
+            pointer-events: none;
+            font-weight: bold;
+            fill: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+        
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+            transition: all 0.3s ease;
+        }
+        
+        .network-legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        
+        .network-legend-item {
+            display: flex;
+            align-items: center;
+            margin: 0 10px;
+            font-size: 12px;
+        }
+        
+        .network-legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .network-tooltip {
+            position: absolute;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            pointer-events: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            max-width: 250px;
+            z-index: 10;
+        }
+        
+        #disease-network {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        
+        .node-highlight {
+            stroke: #fff;
+            stroke-width: 3px;
+            filter: drop-shadow(0 0 5px rgba(0,0,0,0.5));
+        }
+        
+        .link-highlight {
+            stroke: #f39c12;
+            stroke-opacity: 1;
+            stroke-width: 2px;
+        }
+        
+        /* 脉冲动画效果 */
+        .pulse-icon {
+            position: relative;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .pulse-icon .center-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            z-index: 10;
+            position: relative;
+        }
+        
+        .pulse-icon .pulse-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            opacity: 0;
+            z-index: 1;
+        }
+        
+        /* 公立医院 - 红色脉冲 */
+        .public-hospital .center-dot {
+            background-color: #e74c3c;
+            box-shadow: 0 0 0 2px white, 0 0 8px 4px rgba(231, 76, 60, 0.5);
+        }
+        
+        .public-hospital .pulse-ring {
+            background-color: #e74c3c;
+            animation: pulse-public 2s infinite;
+        }
+        
+        /* 私立医院 - 蓝色脉冲 */
+        .private-hospital .center-dot {
+            background-color: #3498db;
+            box-shadow: 0 0 0 2px white, 0 0 8px 4px rgba(52, 152, 219, 0.5);
+        }
+        
+        .private-hospital .pulse-ring {
+            background-color: #3498db;
+            animation: pulse-private 2s infinite;
+        }
+        
+        /* 脉冲动画 */
+        @keyframes pulse-public {
+            0% {
+                transform: scale(0.8);
+                opacity: 0.8;
+            }
+            70% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes pulse-private {
+            0% {
+                transform: scale(0.8);
+                opacity: 0.8;
+            }
+            70% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+        
+        /* 添加第二个脉冲环，延迟启动 */
+        .pulse-icon .pulse-ring:nth-child(2) {
+            animation-delay: 1s;
+        }
+        
+        /* 悬停效果 */
+        .pulse-icon:hover .center-dot {
+            transform: scale(1.2);
+            transition: transform 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Singapore Hospital Distribution Visualization</h1>
+            <p>Explore the locations and information of major hospitals in Singapore - with pulse animation effects</p>
+        </header>
+        
+        <!-- 地图容器 -->
+        <div id="map-container">
+            <div id="map"></div>
+        </div>
+        
+        <!-- 图表容器 -->
+        <div id="charts-container">
+            <!-- 健康管理模块韦恩图 -->
+            <div class="chart-placeholder">
+                <div class="venn-container">
+                    <h2 class="venn-title">Health Management Module Relationship Diagram</h2>
+                    <p class="venn-subtitle">Click on any module to view details, click on intersection areas to view relationship descriptions</p>
+                    <div class="chart-container" id="venn-diagram"></div>
+                    <div class="description-box" id="description-box">
+                        <div class="description-title">Module Description</div>
+                        <div class="description-content" id="description-content">
+                            Click on intersection areas in the chart to view detailed descriptions
+                        </div>
+                    </div>
+                    <div class="legend" id="venn-legend"></div>
+                </div>
+            </div>
+            
+            <!-- 骨痛热症图表 -->
+            <div class="chart-placeholder">
+                <div class="dengue-chart-container">
+                    <h2 class="chart-title">Annual Comparison of Dengue Fever Cases in Singapore</h2>
+                    <div class="chart-container" id="dengue-chart"></div>
+                    <div class="legend" id="chart-legend"></div>
+                    <div class="controls">
+                        <button class="control-btn" id="play-animation">Replay Animation</button>
+                        <button class="control-btn" id="toggle-data">Switch Data Display</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 疾病网络图 -->
+            <div class="chart-placeholder">
+                <div class="network-container">
+                    <h2 class="network-title">Singapore Local Disease Relationship Network</h2>
+                    <div class="chart-container" id="disease-network"></div>
+                    <div class="network-legend" id="network-legend"></div>
+                    <div class="controls">
+                        <button class="control-btn" id="replay-animation">Replay Animation</button>
+                        <button class="control-btn" id="toggle-links">Toggle Relationship Lines</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 三高疾病图表 -->
+            <div class="chart-placeholder">
+                <div class="disease-chart-container">
+                    <h2 class="disease-chart-title">Prevalence of Three High Diseases in Singapore (by Age Group)</h2>
+                    <div class="chart-container" id="probability-chart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Singapore Hospital Map Visualization &copy; 2024</p>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // 初始化地图
+        const map = L.map('map').setView([1.3521, 103.8198], 11);
+        
+        // 添加地图图层
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // 新加坡医院数据
+        const hospitals = [
+            {
+                name: "Raffles Hospital",
+                lat: 1.3028,
+                lng: 103.8533,
+                address: "585 North Bridge Road Singapore 188770",
+                type: "Private Hospital",
+                description: "Comprehensive private hospital providing various specialist services"
+            },
+            {
+                name: "Tan Tock Seng Hospital",
+                lat: 1.3214,
+                lng: 103.8456,
+                address: "Jalan Tan Tock Seng, Singapore 308433",
+                type: "Public Hospital",
+                description: "One of Singapore's main public hospitals, known for its infectious disease department"
+            },
+            {
+                name: "Singapore General Hospital",
+                lat: 1.2791,
+                lng: 103.8339,
+                address: "Outram Road, Singapore 169608",
+                type: "Public Hospital",
+                description: "Singapore's oldest hospital providing comprehensive medical services"
+            },
+            {
+                name: "National University Hospital",
+                lat: 1.2934,
+                lng: 103.7823,
+                address: "5 Lower Kent Ridge Road, Singapore 119074",
+                type: "Public Hospital",
+                description: "Teaching hospital affiliated with the National University School of Medicine"
+            },
+            {
+                name: "Khoo Teck Puat Hospital",
+                lat: 1.3833,
+                lng: 103.8475,
+                address: "90 Yishun Central, Singapore 768828",
+                type: "Public Hospital",
+                description: "Comprehensive hospital serving the northern region of Singapore"
+            },
+            {
+                name: "Gleneagles Hospital",
+                lat: 1.3078,
+                lng: 103.8189,
+                address: "6A Napier Road, Singapore 258500",
+                type: "Private Hospital",
+                description: "Premium private hospital known for obstetrics and oncology"
+            },
+            {
+                name: "Mount Elizabeth Hospital",
+                lat: 1.3064,
+                lng: 103.8358,
+                address: "3 Mount Elizabeth, Singapore 228510",
+                type: "Private Hospital",
+                description: "Private hospital providing high-end medical services"
+            },
+            {
+                name: "Sengkang General Hospital",
+                lat: 1.3933,
+                lng: 103.8928,
+                address: "110 Sengkang East Way, Singapore 544886",
+                type: "Public Hospital",
+                description: "Newly built hospital serving the northeastern part of Singapore"
+            }
+        ];
+        
+        // 创建医院标记并添加到地图
+        hospitals.forEach(hospital => {
+            // 确定医院类型对应的CSS类
+            const hospitalClass = hospital.type === "Private Hospital" ? 'private-hospital' : 'public-hospital';
+            
+            // 创建脉冲图标
+            const pulseIcon = L.divIcon({
+                className: `hospital-pulse-icon ${hospitalClass}`,
+                html: `
+                    <div class="pulse-icon ${hospitalClass}">
+                        <div class="center-dot"></div>
+                        <div class="pulse-ring"></div>
+                        <div class="pulse-ring"></div>
+                    </div>
+                `,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+            
+            // 创建标记
+            const marker = L.marker([hospital.lat, hospital.lng], { icon: pulseIcon })
+                .addTo(map)
+                .bindPopup(`
+                    <div class="hospital-info">
+                        <h3>${hospital.name}</h3>
+                        <p><strong>Type:</strong> ${hospital.type}</p>
+                        <p><strong>Address:</strong> ${hospital.address}</p>
+                        <p>${hospital.description}</p>
+                    </div>
+                `);
+                
+            // 添加悬停效果
+            marker.on('mouseover', function() {
+                this.openPopup();
+            });
+        });
+        
+        // 添加图例
+        const legend = L.control({ position: 'bottomright' });
+        legend.onAdd = function(map) {
+            const div = L.DomUtil.create('div', 'legend');
+            div.innerHTML = `
+                <h4>Legend</h4>
+                <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                    <div style="width: 12px; height: 12px; background-color: #e74c3c; border-radius: 50%; margin-right: 8px; box-shadow: 0 0 0 2px white, 0 0 5px 3px rgba(231, 76, 60, 0.5);"></div>
+                    <span>Public Hospital</span>
+                </div>
+                <div style="display: flex; align-items: center;">
+                    <div style="width: 12px; height: 12px; background-color: #3498db; border-radius: 50%; margin-right: 8px; box-shadow: 0 0 0 2px white, 0 0 5px 3px rgba(52, 152, 219, 0.5);"></div>
+                    <span>Private Hospital</span>
+                </div>
+            `;
+            div.style.backgroundColor = 'white';
+            div.style.padding = '10px';
+            div.style.borderRadius = '5px';
+            div.style.boxShadow = '0 0 15px rgba(0,0,0,0.2)';
+            return div;
+        };
+        legend.addTo(map);
+        
+        // 添加标题控件
+        const titleControl = L.control({ position: 'topleft' });
+        titleControl.onAdd = function(map) {
+            const div = L.DomUtil.create('div', 'map-title');
+            div.innerHTML = `
+                <div style="background: rgba(255,255,255,0.8); padding: 8px 12px; border-radius: 4px; font-weight: bold;">
+                    Click on pulse points to view hospital information
+                </div>
+            `;
+            return div;
+        };
+        titleControl.addTo(map);
+    </script>
+
+    <!-- 韦恩图JavaScript代码 -->
+    <script>
+        // 等待DOM完全加载
+        document.addEventListener('DOMContentLoaded', function() {
+            // 韦恩图数据
+            const vennData = [
+                {
+                    name: "Health Monitoring",
+                    description: "Record health data such as blood pressure, heart rate, weight, and generate health reports",
+                    color: "#e74c3c",
+                    radius: 90,
+                    x: 200,
+                    y: 200
+                },
+                {
+                    name: "Diet Management",
+                    description: "Record daily calorie and nutrient intake, provide personalized dietary advice",
+                    color: "#3498db",
+                    radius: 85,
+                    x: 320,
+                    y: 200
+                },
+                {
+                    name: "Exercise Management",
+                    description: "Create and adjust exercise plans, record exercise activities and calories burned",
+                    color: "#2ecc71",
+                    radius: 80,
+                    x: 260,
+                    y: 280
+                },
+                {
+                    name: "Sleep Management",
+                    description: "Record sleep duration and quality, provide suggestions for improving sleep quality",
+                    color: "#9b59b6",
+                    radius: 75,
+                    x: 260,
+                    y: 130
+                }
+            ];
+
+            // 交集区域数据
+            const intersections = [
+                {
+                    name: "Diet and Health Monitoring",
+                    description: "The impact of diet on health indicators such as blood pressure and weight",
+                    x: 260,
+                    y: 180,
+                    circles: [0, 1] // 健康监测和饮食管理的交集
+                },
+                {
+                    name: "Sleep and Health Monitoring",
+                    description: "Understanding the impact of sleep on health indicators such as heart rate and blood pressure through health monitoring data",
+                    x: 230,
+                    y: 160,
+                    circles: [0, 3] // 健康监测和睡眠管理的交集
+                },
+                {
+                    name: "Exercise and Sleep",
+                    description: "Good exercise habits help improve sleep quality",
+                    x: 240,
+                    y: 205,
+                    circles: [2, 3] // 锻炼管理和睡眠管理的交集
+                },
+                {
+                    name: "Diet and Exercise",
+                    description: "Combining diet and exercise helps achieve health goals such as weight loss and muscle gain",
+                    x: 290,
+                    y: 240,
+                    circles: [1, 2] // 饮食管理和锻炼管理的交集
+                }
+            ];
+
+            // 设置图表尺寸和边距
+            const vennContainer = document.getElementById('venn-diagram');
+            const vennWidth = vennContainer.clientWidth;
+            const vennHeight = vennContainer.clientHeight - 100;
+            const vennMargin = {top: 20, right: 20, bottom: 20, left: 20};
+
+            // 创建SVG容器
+            const vennSvg = d3.select("#venn-diagram")
+                .append("svg")
+                .attr("width", vennWidth)
+                .attr("height", vennHeight)
+                .append("g")
+                .attr("transform", `translate(${vennMargin.left},${vennMargin.top})`);
+
+            // 创建工具提示
+            const vennTooltip = d3.select("body")
+                .append("div")
+                .attr("class", "venn-tooltip");
+
+            // 创建图例
+            const vennLegend = d3.select("#venn-legend");
+            
+            vennData.forEach((item, i) => {
+                const legendItem = vennLegend.append("div")
+                    .attr("class", "legend-item")
+                    .attr("data-index", i);
+                    
+                legendItem.append("div")
+                    .attr("class", "legend-color")
+                    .style("background-color", item.color);
+                    
+                legendItem.append("span")
+                    .text(item.name);
+            });
+
+            // 添加四个圆形
+            const circles = vennSvg.selectAll(".venn-circle")
+                .data(vennData)
+                .enter()
+                .append("circle")
+                .attr("class", "venn-circle")
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y)
+                .attr("r", 0) // 初始半径为0
+                .attr("fill", d => d.color)
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 2)
+                .style("opacity", 0.7)
+                .style("cursor", "pointer")
+                .on("mouseover", function(event, d) {
+                    // 高亮当前圆形
+                    d3.select(this)
+                        .transition()
+                        .duration(300)
+                        .style("opacity", 0.9)
+                        .attr("stroke-width", 3);
+                    
+                    // 显示工具提示
+                    vennTooltip
+                        .style("opacity", 1)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px")
+                        .html(`<strong>${d.name}</strong><br/>${d.description}`);
+                })
+                .on("mouseout", function(event, d) {
+                    // 恢复原始状态
+                    d3.select(this)
+                        .transition()
+                        .duration(300)
+                        .style("opacity", 0.7)
+                        .attr("stroke-width", 2);
+                    
+                    // 隐藏工具提示
+                    vennTooltip.style("opacity", 0);
+                })
+                .on("click", function(event, d) {
+                    // 切换放大状态
+                    const isActive = d3.select(this).classed("active");
+                    
+                    // 移除所有圆形的active类
+                    d3.selectAll(".venn-circle").classed("active", false);
+                    
+                    if (!isActive) {
+                        // 放大当前圆形
+                        d3.select(this).classed("active", true);
+                        
+                        // 添加放大动画
+                        d3.select(this)
+                            .transition()
+                            .duration(500)
+                            .attr("r", d.radius * 1.2)
+                            .style("opacity", 0.9);
+                            
+                        // 其他圆形缩小
+                        d3.selectAll(".venn-circle:not(.active)")
+                            .transition()
+                            .duration(500)
+                            .attr("r", d => d.radius * 0.8)
+                            .style("opacity", 0.5);
+                            
+                        // 更新描述框
+                        updateDescriptionBox(d.name, d.description);
+                    } else {
+                        // 恢复所有圆形到原始大小
+                        d3.selectAll(".venn-circle")
+                            .transition()
+                            .duration(500)
+                            .attr("r", d => d.radius)
+                            .style("opacity", 0.7);
+                            
+                        // 重置描述框
+                        resetDescriptionBox();
+                    }
+                });
+
+            // 添加圆形动画 - 从中心逐渐展开
+            circles.transition()
+                .duration(1000)
+                .delay((d, i) => i * 200)
+                .attr("r", d => d.radius)
+                .style("opacity", 0.7);
+
+            // 添加模块名称标签
+            const moduleLabels = vennSvg.selectAll(".module-name")
+                .data(vennData)
+                .enter()
+                .append("text")
+                .attr("class", "module-name")
+                .attr("x", d => d.x)
+                .attr("y", d => d.y)
+                .attr("dy", "0.35em")
+                .text(d => d.name)
+                .style("opacity", 0)
+                .transition()
+                .duration(500)
+                .delay(1000)
+                .style("opacity", 1);
+
+            // 添加交集区域标记
+            const intersectionMarkers = vennSvg.selectAll(".intersection-marker")
+                .data(intersections)
+                .enter()
+                .append("circle")
+                .attr("class", "intersection-marker")
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y)
+                .attr("r", 15)
+                .style("opacity", 0)
+                .on("mouseover", function(event, d) {
+                    d3.select(this)
+                        .transition()
+                        .duration(300)
+                        .style("opacity", 0.8);
+                        
+                    vennTooltip
+                        .style("opacity", 1)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px")
+                        .html(`Click to view: ${d.name}`);
+                })
+                .on("mouseout", function(event, d) {
+                    d3.select(this)
+                        .transition()
+                        .duration(300)
+                        .style("opacity", 0);
+                        
+                    vennTooltip.style("opacity", 0);
+                })
+                .on("click", function(event, d) {
+                    // 高亮相关的两个圆形
+                    d3.selectAll(".venn-circle")
+                        .style("opacity", 0.5);
+                        
+                    d.circles.forEach(i => {
+                        d3.selectAll(".venn-circle")
+                            .filter((circle, index) => index === i)
+                            .transition()
+                            .duration(300)
+                            .style("opacity", 0.9)
+                            .attr("stroke-width", 3);
+                    });
+                    
+                    // 更新描述框
+                    updateDescriptionBox(d.name, d.description);
+                    
+                    // 阻止事件冒泡
+                    event.stopPropagation();
+                });
+
+            // 添加交集区域标记动画
+            intersectionMarkers.transition()
+                .duration(500)
+                .delay(2000)
+                .style("opacity", 0);
+
+            // 添加图例交互
+            d3.selectAll(".legend-item")
+                .on("mouseover", function(event, d) {
+                    const index = d3.select(this).attr("data-index");
+                    
+                    // 高亮对应的圆形
+                    d3.selectAll(".venn-circle")
+                        .filter((d, i) => i == index)
+                        .transition()
+                        .duration(300)
+                        .style("opacity", 0.9)
+                        .attr("stroke-width", 3);
+                        
+                    // 高亮对应的图例颜色
+                    d3.select(this).select(".legend-color")
+                        .transition()
+                        .duration(300)
+                        .style("transform", "scale(1.3)");
+                })
+                .on("mouseout", function(event, d) {
+                    const index = d3.select(this).attr("data-index");
+                    
+                    // 恢复对应的圆形
+                    d3.selectAll(".venn-circle")
+                        .filter((d, i) => i == index)
+                        .transition()
+                        .duration(300)
+                        .style("opacity", 0.7)
+                        .attr("stroke-width", 2);
+                        
+                    // 恢复对应的图例颜色
+                    d3.select(this).select(".legend-color")
+                        .transition()
+                        .duration(300)
+                        .style("transform", "scale(1)");
+                })
+                .on("click", function(event, d) {
+                    const index = d3.select(this).attr("data-index");
+                    
+                    // 触发对应圆形的点击事件
+                    d3.selectAll(".venn-circle")
+                        .filter((d, i) => i == index)
+                        .dispatch("click");
+                });
+                
+            // 点击SVG空白区域重置
+            vennSvg.on("click", function(event) {
+                if (event.target === this) {
+                    resetDescriptionBox();
+                    d3.selectAll(".venn-circle")
+                        .transition()
+                        .duration(500)
+                        .attr("r", d => d.radius)
+                        .style("opacity", 0.7)
+                        .attr("stroke-width", 2);
+                }
+            });
+            
+            // 更新描述框内容
+            function updateDescriptionBox(title, content) {
+                const descriptionBox = d3.select("#description-box");
+                const descriptionTitle = descriptionBox.select(".description-title");
+                const descriptionContent = descriptionBox.select(".description-content");
+                
+                descriptionBox
+                    .transition()
+                    .duration(300)
+                    .style("background-color", "#e8f4fc")
+                    .style("border-left-color", "#3498db");
+                    
+                descriptionTitle.text(title);
+                descriptionContent.text(content);
+            }
+            
+            // 重置描述框
+            function resetDescriptionBox() {
+                const descriptionBox = d3.select("#description-box");
+                const descriptionTitle = descriptionBox.select(".description-title");
+                const descriptionContent = descriptionBox.select(".description-content");
+                
+                descriptionBox
+                    .transition()
+                    .duration(300)
+                    .style("background-color", "#f8f9fa")
+                    .style("border-left-color", "#3498db");
+                    
+                descriptionTitle.text("Module Description");
+                descriptionContent.text("Click on intersection areas in the chart to view detailed descriptions");
+            }
+        });
+    </script>
+
+    <!-- 骨痛热症图表JavaScript代码 -->
+    <script>
+        // 等待DOM完全加载
+        document.addEventListener('DOMContentLoaded', function() {
+            // 骨痛热症数据
+            const dengueData = [
+                { year: "2023", cases: 15200, color: "#e74c3c" },
+                { year: "2024", cases: 13651, color: "#3498db" },
+                { year: "2025(Jan-May)", cases: 1900, color: "#2ecc71" }
+            ];
+
+            // 设置图表尺寸和边距
+            const dengueContainer = document.getElementById('dengue-chart');
+            const dengueWidth = dengueContainer.clientWidth;
+            const dengueHeight = dengueContainer.clientHeight - 100;
+            const dengueMargin = {top: 40, right: 30, bottom: 60, left: 60};
+
+            // 创建SVG容器
+            const dengueSvg = d3.select("#dengue-chart")
+                .append("svg")
+                .attr("width", dengueWidth)
+                .attr("height", dengueHeight)
+                .append("g")
+                .attr("transform", `translate(${dengueMargin.left},${dengueMargin.top})`);
+
+            // 创建工具提示
+            const dengueTooltip = d3.select("body")
+                .append("div")
+                .attr("class", "dengue-tooltip");
+
+            // 设置比例尺
+            const dengueXScale = d3.scaleBand()
+                .domain(dengueData.map(d => d.year))
+                .range([0, dengueWidth - dengueMargin.left - dengueMargin.right])
+                .padding(0.3);
+                
+            const dengueYScale = d3.scaleLinear()
+                .domain([0, d3.max(dengueData, d => d.cases) * 1.1])
+                .range([dengueHeight - dengueMargin.top - dengueMargin.bottom, 0]);
+
+            // 添加坐标轴
+            dengueSvg.append("g")
+                .attr("class", "x-axis")
+                .attr("transform", `translate(0,${dengueHeight - dengueMargin.top - dengueMargin.bottom})`)
+                .call(d3.axisBottom(dengueXScale));
+                
+            dengueSvg.append("g")
+                .attr("class", "y-axis")
+                .call(d3.axisLeft(dengueYScale).ticks(8));
+
+            // 添加坐标轴标签
+            dengueSvg.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - dengueMargin.left)
+                .attr("x", 0 - ((dengueHeight - dengueMargin.top - dengueMargin.bottom) / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .text("Number of Cases");
+                
+            dengueSvg.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", `translate(${(dengueWidth - dengueMargin.left - dengueMargin.right) / 2}, ${dengueHeight - dengueMargin.top - dengueMargin.bottom + dengueMargin.bottom - 10})`)
+                .style("text-anchor", "middle")
+                .text("Year");
+
+            // 添加柱状图
+            const bars = dengueSvg.selectAll(".bar")
+                .data(dengueData)
+                .enter()
+                .append("rect")
+                .attr("class", "bar")
+                .attr("x", d => dengueXScale(d.year))
+                .attr("y", dengueHeight - dengueMargin.top - dengueMargin.bottom) // 初始位置在底部
+                .attr("width", dengueXScale.bandwidth())
+                .attr("height", 0) // 初始高度为0
+                .attr("fill", d => d.color)
+                .on("mouseover", function(event, d) {
+                    // 显示工具提示
+                    dengueTooltip
+                        .style("opacity", 1)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px")
+                        .html(`
+                            <strong>${d.year}</strong><br/>
+                            Number of Cases: ${d.cases.toLocaleString()} cases
+                        `);
+                    
+                    // 高亮当前柱子
+                    d3.select(this)
+                        .transition()
+                        .duration(200)
+                        .attr("fill", d3.color(d.color).brighter(0.5));
+                })
+                .on("mouseout", function(event, d) {
+                    // 隐藏工具提示
+                    dengueTooltip.style("opacity", 0);
+                    
+                    // 恢复原始颜色
+                    d3.select(this)
+                        .transition()
+                        .duration(200)
+                        .attr("fill", d.color);
+                })
+                .on("click", function(event, d) {
+                    // 点击时放大柱子
+                    const isActive = d3.select(this).classed("active");
+                    
+                    // 移除所有柱子的active类
+                    d3.selectAll(".bar").classed("active", false);
+                    
+                    if (!isActive) {
+                        // 放大当前柱子
+                        d3.select(this).classed("active", true);
+                        
+                        // 添加放大动画
+                        d3.select(this)
+                            .transition()
+                            .duration(500)
+                            .attr("x", d => dengueXScale(d.year) - 5)
+                            .attr("width", dengueXScale.bandwidth() + 10);
+                            
+                        // 其他柱子缩小
+                        d3.selectAll(".bar:not(.active)")
+                            .transition()
+                            .duration(500)
+                            .attr("x", d => dengueXScale(d.year) + 2.5)
+                            .attr("width", dengueXScale.bandwidth() - 5);
+                    } else {
+                        // 恢复所有柱子到原始大小
+                        d3.selectAll(".bar")
+                            .transition()
+                            .duration(500)
+                            .attr("x", d => dengueXScale(d.year))
+                            .attr("width", dengueXScale.bandwidth());
+                    }
+                });
+
+            // 添加柱状图动画 - 从底部向上增长
+            bars.transition()
+                .duration(1000)
+                .delay((d, i) => i * 300)
+                .attr("y", d => dengueYScale(d.cases))
+                .attr("height", d => (dengueHeight - dengueMargin.top - dengueMargin.bottom) - dengueYScale(d.cases));
+
+            // 添加数据标签
+            const labels = dengueSvg.selectAll(".bar-label")
+                .data(dengueData)
+                .enter()
+                .append("text")
+                .attr("class", "bar-label")
+                .attr("x", d => dengueXScale(d.year) + dengueXScale.bandwidth() / 2)
+                .attr("y", dengueHeight - dengueMargin.top - dengueMargin.bottom) // 初始位置在底部
+                .attr("text-anchor", "middle")
+                .style("opacity", 0)
+                .text(d => d.cases.toLocaleString())
+                .transition()
+                .duration(1000)
+                .delay((d, i) => i * 300 + 500)
+                .attr("y", d => dengueYScale(d.cases) - 10)
+                .style("opacity", 1);
+
+            // 创建图例
+            const dengueLegend = d3.select("#chart-legend");
+            
+            dengueData.forEach((item, i) => {
+                const legendItem = dengueLegend.append("div")
+                    .attr("class", "legend-item");
+                    
+                legendItem.append("div")
+                    .attr("class", "legend-color")
+                    .style("background-color", item.color);
+                    
+                legendItem.append("span")
+                    .text(item.year + ": " + item.cases.toLocaleString() + " cases");
+            });
+
+            // 添加控制按钮功能
+            document.getElementById("play-animation").addEventListener("click", function() {
+                // 重置柱子位置和高度
+                bars
+                    .attr("y", dengueHeight - dengueMargin.top - dengueMargin.bottom)
+                    .attr("height", 0)
+                    .transition()
+                    .duration(1000)
+                    .delay((d, i) => i * 300)
+                    .attr("y", d => dengueYScale(d.cases))
+                    .attr("height", d => (dengueHeight - dengueMargin.top - dengueMargin.bottom) - dengueYScale(d.cases));
+                
+                // 重置标签位置
+                labels
+                    .style("opacity", 0)
+                    .attr("y", dengueHeight - dengueMargin.top - dengueMargin.bottom)
+                    .transition()
+                    .duration(1000)
+                    .delay((d, i) => i * 300 + 500)
+                    .attr("y", d => dengueYScale(d.cases) - 10)
+                    .style("opacity", 1);
+            });
+
+            let showPercentage = false;
+            document.getElementById("toggle-data").addEventListener("click", function() {
+                showPercentage = !showPercentage;
+                
+                if (showPercentage) {
+                    // 计算百分比
+                    const totalCases = d3.sum(dengueData, d => d.cases);
+                    
+                    // 更新标签显示百分比
+                    labels
+                        .transition()
+                        .duration(500)
+                        .text(d => `${((d.cases / totalCases) * 100).toFixed(1)}%`);
+                        
+                    this.textContent = "Switch to Actual Data";
+                } else {
+                    // 恢复显示实际数据
+                    labels
+                        .transition()
+                        .duration(500)
+                        .text(d => d.cases.toLocaleString());
+                        
+                    this.textContent = "Switch to Percentage";
+                }
+            });
+        });
+    </script>
+
+    <!-- 疾病网络图JavaScript代码 - 修复版 -->
+    <script>
+        // 等待DOM完全加载
+        document.addEventListener('DOMContentLoaded', function() {
+            // 新加坡本地疾病数据
+            const diseaseNetworkData = {
+                nodes: [
+                    { id: "Common Cold", group: 1, value: 120000, color: "#e74c3c" },
+                    { id: "Hypertension", group: 2, value: 80000, color: "#3498db" },
+                    { id: "Diabetes", group: 2, value: 60000, color: "#2ecc71" },
+                    { id: "Dengue Fever", group: 3, value: 15000, color: "#f39c12" },
+                    { id: "Asthma", group: 1, value: 40000, color: "#9b59b6" },
+                    { id: "Heart Disease", group: 2, value: 30000, color: "#1abc9c" },
+                    { id: "Skin Disease", group: 4, value: 35000, color: "#d35400" },
+                    { id: "Gastroenteritis", group: 4, value: 25000, color: "#c0392b" },
+                    { id: "Arthritis", group: 3, value: 20000, color: "#8e44ad" },
+                    { id: "Depression", group: 5, value: 18000, color: "#16a085" }
+                ],
+                links: [
+                    { source: "Common Cold", target: "Asthma", value: 1 },
+                    { source: "Hypertension", target: "Diabetes", value: 2 },
+                    { source: "Hypertension", target: "Heart Disease", value: 3 },
+                    { source: "Diabetes", target: "Heart Disease", value: 2 },
+                    { source: "Dengue Fever", target: "Skin Disease", value: 1 },
+                    { source: "Arthritis", target: "Heart Disease", value: 1 },
+                    { source: "Depression", target: "Heart Disease", value: 1 },
+                    { source: "Depression", target: "Diabetes", value: 1 },
+                    { source: "Gastroenteritis", target: "Skin Disease", value: 1 },
+                    { source: "Common Cold", target: "Gastroenteritis", value: 1 }
+                ]
+            };
+
+            // 设置图表尺寸和边距
+            const networkContainer = document.getElementById('disease-network');
+            const networkWidth = networkContainer.clientWidth;
+            const networkHeight = networkContainer.clientHeight;
+            const networkMargin = {top: 20, right: 20, bottom: 20, left: 20};
+
+            // 创建SVG容器
+            const networkSvg = d3.select("#disease-network")
+                .append("svg")
+                .attr("width", networkWidth)
+                .attr("height", networkHeight)
+                .append("g")
+                .attr("transform", `translate(${networkMargin.left},${networkMargin.top})`);
+
+            // 创建工具提示
+            const networkTooltip = d3.select("body")
+                .append("div")
+                .attr("class", "network-tooltip");
+
+            // 设置比例尺 - 节点大小根据患病率调整
+            const radiusScale = d3.scaleSqrt()
+                .domain([0, d3.max(diseaseNetworkData.nodes, d => d.value)])
+                .range([10, 40]);
+
+            // 创建力导向图模拟
+            const simulation = d3.forceSimulation(diseaseNetworkData.nodes)
+                .force("link", d3.forceLink(diseaseNetworkData.links).id(d => d.id).distance(100))
+                .force("charge", d3.forceManyBody().strength(-50))
+                .force("center", d3.forceCenter((networkWidth - networkMargin.left - networkMargin.right) / 2, (networkHeight - networkMargin.top - networkMargin.bottom) / 2))
+                .force("collision", d3.forceCollide().radius(d => radiusScale(d.value) + 5));
+
+            // 创建连线
+            const link = networkSvg.append("g")
+                .attr("class", "links")
+                .selectAll("line")
+                .data(diseaseNetworkData.links)
+                .enter()
+                .append("line")
+                .attr("class", "link")
+                .attr("stroke-width", 2)
+                .style("opacity", 0.7);
+
+            // 创建节点组
+            const node = networkSvg.append("g")
+                .attr("class", "nodes")
+                .selectAll("g")
+                .data(diseaseNetworkData.nodes)
+                .enter()
+                .append("g")
+                .attr("class", "node")
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended));
+
+            // 添加节点圆形
+            const circles = node.append("circle")
+                .attr("r", d => radiusScale(d.value))
+                .attr("fill", d => d.color)
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 2)
+                .style("cursor", "pointer")
+                .on("mouseover", function(event, d) {
+                    // 高亮当前节点和关联节点
+                    d3.select(this)
+                        .classed("node-highlight", true)
+                        .transition()
+                        .duration(300)
+                        .attr("r", radiusScale(d.value) * 1.2);
+                    
+                    // 高亮关联连线
+                    link
+                        .classed("link-highlight", l => l.source.id === d.id || l.target.id === d.id)
+                        .style("opacity", l => (l.source.id === d.id || l.target.id === d.id) ? 1 : 0.2);
+                    
+                    // 显示工具提示
+                    networkTooltip
+                        .style("opacity", 1)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px")
+                        .html(`
+                            <strong>${d.id}</strong><br/>
+                            Estimated number of patients: ${d.value.toLocaleString()} people
+                        `);
+                })
+                .on("mouseout", function(event, d) {
+                    // 恢复原始状态
+                    d3.select(this)
+                        .classed("node-highlight", false)
+                        .transition()
+                        .duration(300)
+                        .attr("r", radiusScale(d.value));
+                    
+                    // 恢复所有连线
+                    link
+                        .classed("link-highlight", false)
+                        .style("opacity", 0.7);
+                    
+                    // 隐藏工具提示
+                    networkTooltip.style("opacity", 0);
+                })
+                .on("click", function(event, d) {
+                    // 切换固定状态
+                    d.fx = d.fx ? null : d.x;
+                    d.fy = d.fy ? null : d.y;
+                    
+                    // 添加脉冲动画
+                    d3.select(this)
+                        .transition()
+                        .duration(200)
+                        .attr("r", radiusScale(d.value) * 1.5)
+                        .transition()
+                        .duration(200)
+                        .attr("r", radiusScale(d.value));
+                    
+                    simulation.alpha(0.3).restart();
+                });
+
+            // 添加节点标签
+            const nodeLabels = node.append("text")
+                .attr("class", "node-label")
+                .text(d => d.id)
+                .style("opacity", 1)
+                .attr("dy", "0.35em");
+
+            // 更新力导向图位置
+            simulation.on("tick", () => {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                node
+                    .attr("transform", d => `translate(${d.x},${d.y})`);
+            });
+
+            // 拖拽函数
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                // 不固定位置，让节点自由移动
+                // d.fx = null;
+                // d.fy = null;
+            }
+
+            // 创建图例
+            const networkLegend = d3.select("#network-legend");
+            
+            // 按疾病类型分组创建图例
+            const diseaseGroups = [
+                { name: "Common Infectious Diseases", color: "#e74c3c" },
+                { name: "Chronic Diseases", color: "#3498db" },
+                { name: "Seasonal/Environmental Diseases", color: "#f39c12" },
+                { name: "Other Common Diseases", color: "#d35400" },
+                { name: "Mental Health", color: "#16a085" }
+            ];
+            
+            diseaseGroups.forEach(group => {
+                const legendItem = networkLegend.append("div")
+                    .attr("class", "network-legend-item");
+                    
+                legendItem.append("div")
+                    .attr("class", "network-legend-color")
+                    .style("background-color", group.color);
+                    
+                legendItem.append("span")
+                    .text(group.name);
+            });
+
+            // 添加控制按钮功能
+            document.getElementById("replay-animation").addEventListener("click", function() {
+                // 重置节点位置到中心
+                diseaseNetworkData.nodes.forEach(node => {
+                    node.x = (networkWidth - networkMargin.left - networkMargin.right) / 2;
+                    node.y = (networkHeight - networkMargin.top - networkMargin.bottom) / 2;
+                    node.fx = null;
+                    node.fy = null;
+                });
+                
+                // 重新启动模拟
+                simulation.alpha(1).restart();
+            });
+
+            let linksVisible = true;
+            document.getElementById("toggle-links").addEventListener("click", function() {
+                linksVisible = !linksVisible;
+                
+                if (linksVisible) {
+                    link
+                        .transition()
+                        .duration(500)
+                        .style("opacity", 0.7);
+                    this.textContent = "Hide Relationship Lines";
+                } else {
+                    link
+                        .transition()
+                        .duration(500)
+                        .style("opacity", 0);
+                    this.textContent = "Show Relationship Lines";
+                }
+            });
+        });
+    </script>
+
+    <!-- 三高疾病图表JavaScript代码 -->
+    <script>
+        // 等待DOM完全加载
+        document.addEventListener('DOMContentLoaded', function() {
+            // 模拟数据 - 三高疾病在不同年龄段的患病率
+            const diseaseData = {
+                "Hypertension": [
+                    {age: 20, rate: 0.05},
+                    {age: 30, rate: 0.12},
+                    {age: 40, rate: 0.25},
+                    {age: 50, rate: 0.45},
+                    {age: 60, rate: 0.60},
+                    {age: 70, rate: 0.65},
+                    {age: 80, rate: 0.68}
+                ],
+                "Hyperlipidemia": [
+                    {age: 20, rate: 0.08},
+                    {age: 30, rate: 0.18},
+                    {age: 40, rate: 0.32},
+                    {age: 50, rate: 0.48},
+                    {age: 60, rate: 0.52},
+                    {age: 70, rate: 0.50},
+                    {age: 80, rate: 0.48}
+                ],
+                "Diabetes": [
+                    {age: 20, rate: 0.02},
+                    {age: 30, rate: 0.06},
+                    {age: 40, rate: 0.15},
+                    {age: 50, rate: 0.25},
+                    {age: 60, rate: 0.32},
+                    {age: 70, rate: 0.35},
+                    {age: 80, rate: 0.33}
+                ]
+            };
+            
+            // 颜色配置
+            const colors = {
+                "Hypertension": "#e74c3c",
+                "Hyperlipidemia": "#3498db", 
+                "Diabetes": "#2ecc71"
+            };
+            
+            // 设置图表尺寸和边距
+            const diseaseContainer = document.getElementById('probability-chart');
+            const diseaseWidth = diseaseContainer.clientWidth;
+            const diseaseHeight = diseaseContainer.clientHeight;
+            const diseaseMargin = {top: 40, right: 80, bottom: 50, left: 60};
+            
+            // 创建SVG容器
+            const diseaseSvg = d3.select("#probability-chart")
+                .append("svg")
+                .attr("width", diseaseWidth)
+                .attr("height", diseaseHeight)
+                .append("g")
+                .attr("transform", `translate(${diseaseMargin.left},${diseaseMargin.top})`);
+            
+            // 创建工具提示
+            const diseaseTooltip = d3.select("body")
+                .append("div")
+                .attr("class", "disease-tooltip");
+            
+            // 设置比例尺
+            const xScale = d3.scaleLinear()
+                .domain([20, 80])
+                .range([0, diseaseWidth - diseaseMargin.left - diseaseMargin.right]);
+                
+            const yScale = d3.scaleLinear()
+                .domain([0, 0.7])
+                .range([diseaseHeight - diseaseMargin.top - diseaseMargin.bottom, 0]);
+            
+            // 创建曲线生成器
+            const line = d3.line()
+                .x(d => xScale(d.age))
+                .y(d => yScale(d.rate))
+                .curve(d3.curveMonotoneX);
+            
+            // 创建区域生成器
+            const area = d3.area()
+                .x(d => xScale(d.age))
+                .y0(diseaseHeight - diseaseMargin.top - diseaseMargin.bottom)
+                .y1(d => yScale(d.rate))
+                .curve(d3.curveMonotoneX);
+            
+            // 添加坐标轴
+            diseaseSvg.append("g")
+                .attr("class", "x-axis")
+                .attr("transform", `translate(0,${diseaseHeight - diseaseMargin.top - diseaseMargin.bottom})`)
+                .call(d3.axisBottom(xScale).ticks(6).tickFormat(d => `${d} years old`));
+                
+            diseaseSvg.append("g")
+                .attr("class", "y-axis")
+                .call(d3.axisLeft(yScale).ticks(5).tickFormat(d => `${(d * 100).toFixed(0)}%`));
+            
+            // 添加坐标轴标签
+            diseaseSvg.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - diseaseMargin.left)
+                .attr("x", 0 - ((diseaseHeight - diseaseMargin.top - diseaseMargin.bottom) / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .text("Prevalence Rate");
+                
+            diseaseSvg.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", `translate(${(diseaseWidth - diseaseMargin.left - diseaseMargin.right) / 2}, ${diseaseHeight - diseaseMargin.top - diseaseMargin.bottom + diseaseMargin.bottom - 10})`)
+                .style("text-anchor", "middle")
+                .text("Age");
+            
+            // 为每种疾病添加区域和曲线
+            Object.keys(diseaseData).forEach(disease => {
+                const data = diseaseData[disease];
+                const color = colors[disease];
+                
+                // 添加区域
+                diseaseSvg.append("path")
+                    .datum(data)
+                    .attr("class", `disease-area area-${disease}`)
+                    .attr("fill", color)
+                    .attr("d", area)
+                    .style("opacity", 0) // 初始透明
+                    .transition() // 过渡动画
+                    .duration(1000)
+                    .delay(Object.keys(diseaseData).indexOf(disease) * 300)
+                    .style("opacity", 0.3);
+                
+                // 添加曲线
+                diseaseSvg.append("path")
+                    .datum(data)
+                    .attr("class", `disease-line line-${disease}`)
+                    .attr("fill", "none")
+                    .attr("stroke", color)
+                    .attr("stroke-width", 3)
+                    .attr("d", line)
+                    .style("stroke-dasharray", function() {
+                        // 获取路径总长度用于动画
+                        const totalLength = this.getTotalLength();
+                        return totalLength + " " + totalLength;
+                    })
+                    .style("stroke-dashoffset", function() {
+                        return this.getTotalLength();
+                    })
+                    .transition() // 过渡动画 - 线条绘制效果
+                    .duration(1500)
+                    .delay(Object.keys(diseaseData).indexOf(disease) * 300)
+                    .style("stroke-dashoffset", 0);
+                
+                // 添加数据点
+                diseaseSvg.selectAll(`.dot-${disease}`)
+                    .data(data)
+                    .enter()
+                    .append("circle")
+                    .attr("class", `dot dot-${disease}`)
+                    .attr("cx", d => xScale(d.age))
+                    .attr("cy", d => yScale(d.rate))
+                    .attr("r", 0) // 初始半径为0
+                    .attr("fill", color)
+                    .transition() // 过渡动画 - 圆点出现
+                    .duration(500)
+                    .delay((d, i) => 1000 + (i * 100) + Object.keys(diseaseData).indexOf(disease) * 300)
+                    .attr("r", 4);
+            });
+            
+            // 添加图例
+            const diseaseLegend = diseaseSvg.selectAll(".disease-legend")
+                .data(Object.keys(diseaseData))
+                .enter()
+                .append("g")
+                .attr("class", "disease-legend")
+                .attr("transform", (d, i) => `translate(${diseaseWidth - diseaseMargin.left - diseaseMargin.right + 10}, ${i * 25})`)
+                .style("cursor", "pointer");
+                
+            diseaseLegend.append("rect")
+                .attr("x", 0)
+                .attr("width", 18)
+                .attr("height", 18)
+                .style("fill", d => colors[d]);
+                
+            diseaseLegend.append("text")
+                .attr("x", 25)
+                .attr("y", 9)
+                .attr("dy", ".35em")
+                .style("text-anchor", "start")
+                .text(d => d);
+            
+            // 添加交互效果
+            // 图例点击交互 - 显示/隐藏对应的疾病曲线
+            diseaseLegend.on("click", function(event, disease) {
+                const isActive = d3.select(this).classed("active");
+                
+                // 切换活动状态
+                d3.selectAll(".disease-legend").classed("active", false);
+                if (!isActive) {
+                    d3.select(this).classed("active", true);
+                }
+                
+                // 显示/隐藏对应的疾病曲线
+                Object.keys(diseaseData).forEach(d => {
+                    const shouldShow = !isActive && d === disease;
+                    
+                    d3.selectAll(`.line-${d}`)
+                        .transition()
+                        .duration(500)
+                        .style("opacity", shouldShow ? 1 : 0.3);
+                        
+                    d3.selectAll(`.area-${d}`)
+                        .transition()
+                        .duration(500)
+                        .style("opacity", shouldShow ? 0.3 : 0.1);
+                        
+                    d3.selectAll(`.dot-${d}`)
+                        .transition()
+                        .duration(500)
+                        .style("opacity", shouldShow ? 1 : 0.3);
+                });
+            });
+            
+            // 曲线悬停交互
+            Object.keys(diseaseData).forEach(disease => {
+                // 为每条曲线添加悬停区域
+                diseaseSvg.append("rect")
+                    .attr("class", `hover-area hover-${disease}`)
+                    .attr("x", 0)
+                    .attr("y", 0)
+                    .attr("width", diseaseWidth - diseaseMargin.left - diseaseMargin.right)
+                    .attr("height", diseaseHeight - diseaseMargin.top - diseaseMargin.bottom)
+                    .style("fill", "none")
+                    .style("pointer-events", "all")
+                    .on("mouseover", function(event) {
+                        // 高亮当前疾病曲线
+                        d3.select(`.line-${disease}`)
+                            .classed("disease-highlight", true)
+                            .transition()
+                            .duration(300)
+                            .attr("stroke-width", 5);
+                            
+                        // 淡化其他疾病曲线
+                        Object.keys(diseaseData).forEach(d => {
+                            if (d !== disease) {
+                                d3.select(`.line-${d}`).classed("disease-fade", true);
+                                d3.select(`.area-${d}`).classed("disease-fade", true);
+                                d3.selectAll(`.dot-${d}`).classed("disease-fade", true);
+                            }
+                        });
+                    })
+                    .on("mousemove", function(event) {
+                        // 获取鼠标位置对应的年龄
+                        const mouseX = d3.pointer(event, this)[0];
+                        const age = Math.round(xScale.invert(mouseX));
+                        
+                        // 找到最接近的数据点
+                        const data = diseaseData[disease];
+                        const closest = data.reduce((prev, curr) => 
+                            Math.abs(curr.age - age) < Math.abs(prev.age - age) ? curr : prev
+                        );
+                        
+                        // 显示工具提示
+                        diseaseTooltip
+                            .style("opacity", 1)
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 28) + "px")
+                            .html(`
+                                <strong>${disease}</strong><br/>
+                                Age: ${closest.age} years<br/>
+                                Prevalence: ${(closest.rate * 100).toFixed(1)}%
+                            `);
+                    })
+                    .on("mouseout", function() {
+                        // 恢复所有曲线样式
+                        d3.select(`.line-${disease}`)
+                            .classed("disease-highlight", false)
+                            .transition()
+                            .duration(300)
+                            .attr("stroke-width", 3);
+                            
+                        Object.keys(diseaseData).forEach(d => {
+                            d3.select(`.line-${d}`).classed("disease-fade", false);
+                            d3.select(`.area-${d}`).classed("disease-fade", false);
+                            d3.selectAll(`.dot-${d}`).classed("disease-fade", false);
+                        });
+                        
+                        // 隐藏工具提示
+                        diseaseTooltip.style("opacity", 0);
+                    });
+            });
+        });
+    </script>
+</body>
+</html>
